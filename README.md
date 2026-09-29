@@ -82,6 +82,15 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 - Grant permission in Android settings
 - Return to app to verify permission status
 
+4. Add a webhook:
+
+- Tap "Add Webhook" on the main screen
+- Enter a name and your n8n webhook URL
+- Add one or more rules: a package name (or `*` for any app), optionally narrowed by title/text regex
+- Tap "Test" on the webhook card to send a sample payload
+
+Webhooks and ignored apps are stored on the device. Notifications that match no webhook are kept as "undecided" and can be uploaded manually.
+
 ## Development
 
 ### Project Structure

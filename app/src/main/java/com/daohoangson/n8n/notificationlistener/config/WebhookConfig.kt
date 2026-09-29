@@ -15,7 +15,11 @@ data class FilterRule(
     val packageName: String,
     val titleRegex: Regex? = null,
     val textRegex: Regex? = null
-)
+) {
+    companion object {
+        const val ANY_PACKAGE = "*"
+    }
+}
 
 object DefaultWebhookConfig {
     val config = WebhookConfig(

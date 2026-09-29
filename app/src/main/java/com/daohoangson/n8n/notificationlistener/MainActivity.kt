@@ -19,12 +19,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.daohoangson.n8n.notificationlistener.config.WebhookConfigStore
 import com.daohoangson.n8n.notificationlistener.data.repository.NotificationRepository
 import com.daohoangson.n8n.notificationlistener.ui.NotificationListActivity
+import com.daohoangson.n8n.notificationlistener.ui.WebhookSettingsActivity
 import com.daohoangson.n8n.notificationlistener.ui.theme.MyApplicationTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -34,6 +38,11 @@ class MainActivity : ComponentActivity() {
     
     @Inject
     lateinit var repository: NotificationRepository
+
+    @Inject
+    lateinit var configStore: WebhookConfigStore
+
+    private var isPermissionGranted by mutableStateOf(false)
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,13 +54,21 @@ class MainActivity : ComponentActivity() {
                     NotificationListenerApp(
                         modifier = Modifier.padding(innerPadding),
                         repository = repository,
+                        configStore = configStore,
                         onOpenNotificationSettings = { openNotificationListenerSettings() },
                         onOpenNotificationList = { openNotificationListActivity() },
-                        isPermissionGranted = isNotificationListenerEnabled()
+                        onOpenWebhookSettings = { openWebhookSettingsActivity() },
+                        isPermissionGranted = isPermissionGranted
                     )
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Re-check after returning from the system notification access settings
+        isPermissionGranted = isNotificationListenerEnabled()
     }
     
     private fun isNotificationListenerEnabled(): Boolean {
@@ -72,6 +89,11 @@ class MainActivity : ComponentActivity() {
         val intent = Intent(this, NotificationListActivity::class.java)
         startActivity(intent)
     }
+
+    private fun openWebhookSettingsActivity() {
+        val intent = Intent(this, WebhookSettingsActivity::class.java)
+        startActivity(intent)
+    }
     
 }
 
@@ -79,10 +101,13 @@ class MainActivity : ComponentActivity() {
 fun NotificationListenerApp(
     modifier: Modifier = Modifier,
     repository: NotificationRepository,
+    configStore: WebhookConfigStore,
     onOpenNotificationSettings: () -> Unit,
     onOpenNotificationList: () -> Unit,
+    onOpenWebhookSettings: () -> Unit,
     isPermissionGranted: Boolean
 ) {
+    val config by configStore.config.collectAsState()
     val failedNotificationCount by repository.getFailedNotificationCountFlow().collectAsState(initial = 0)
     val undecidedNotificationCount by repository.getUndecidedNotificationCountFlow().collectAsState(initial = 0)
     
@@ -118,6 +143,21 @@ fun NotificationListenerApp(
             Text("Enable Notification Access")
         }
         
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Webhook configuration
+        Text(
+            text = if (config.urls.isEmpty()) "No webhooks configured" else "Webhooks: ${config.urls.size}",
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(onClick = onOpenWebhookSettings) {
+            Text(if (config.urls.isEmpty()) "Add Webhook" else "Manage Webhooks")
+        }
+
         Spacer(modifier = Modifier.height(32.dp))
         
         // Notification counts

@@ -221,4 +221,34 @@ class NotificationFilterEngineTest {
         assertEquals(1, matchingUrls.size)
         assertEquals("Slack Notifications", matchingUrls[0].name)
     }
+
+    @Test
+    fun findMatchingUrls_usesProvidedConfig_andWildcardMatchesAnyPackage() {
+        var config = WebhookConfig(
+            urls = listOf(
+                WebhookUrl(
+                    url = "https://example.com/all",
+                    name = "All",
+                    rules = listOf(FilterRule(packageName = FilterRule.ANY_PACKAGE))
+                )
+            ),
+            ignoredPackages = listOf("com.ignored")
+        )
+        val engine = NotificationFilterEngine { config }
+        val notificationData = NotificationData(
+            packageName = "com.whatever.app",
+            title = "Hi",
+            text = "There",
+            timestamp = System.currentTimeMillis(),
+            id = 1,
+            tag = null
+        )
+
+        assertEquals(listOf("All"), engine.findMatchingUrls(notificationData).map { it.name })
+        assertTrue(engine.isIgnored(notificationData.copy(packageName = "com.ignored")))
+
+        // Changes to the config are picked up without recreating the engine
+        config = config.copy(urls = emptyList())
+        assertTrue(engine.findMatchingUrls(notificationData).isEmpty())
+    }
 }

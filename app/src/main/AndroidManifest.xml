@@ -30,6 +30,11 @@
             android:exported="false"
             android:theme="@style/Theme.MyApplication" />
 
+        <activity
+            android:name=".ui.WebhookSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MyApplication" />
+
         <service
             android:name=".NotificationListenerService"
             android:exported="false"

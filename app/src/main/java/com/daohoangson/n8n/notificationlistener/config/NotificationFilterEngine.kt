@@ -5,16 +5,19 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class NotificationFilterEngine @Inject constructor() {
-    
-    private val config = DefaultWebhookConfig.config
-    
+class NotificationFilterEngine(
+    private val configProvider: () -> WebhookConfig = { DefaultWebhookConfig.config }
+) {
+
+    @Inject
+    constructor(configStore: WebhookConfigStore) : this({ configStore.config.value })
+
     fun isIgnored(notificationData: NotificationData): Boolean {
-        return config.ignoredPackages.contains(notificationData.packageName)
+        return configProvider().ignoredPackages.contains(notificationData.packageName)
     }
     
     fun findMatchingUrls(notificationData: NotificationData): List<WebhookUrl> {
-        return config.urls.filter { webhookUrl ->
+        return configProvider().urls.filter { webhookUrl ->
             webhookUrl.rules.any { rule ->
                 matchesRule(notificationData, rule)
             }
@@ -22,7 +25,7 @@ class NotificationFilterEngine @Inject constructor() {
     }
     
     private fun matchesRule(notificationData: NotificationData, rule: FilterRule): Boolean {
-        if (rule.packageName != notificationData.packageName) {
+        if (rule.packageName != FilterRule.ANY_PACKAGE && rule.packageName != notificationData.packageName) {
             return false
         }
         

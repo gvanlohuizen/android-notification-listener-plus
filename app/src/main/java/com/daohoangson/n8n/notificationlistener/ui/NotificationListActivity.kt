@@ -19,6 +19,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -35,7 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.daohoangson.n8n.notificationlistener.config.DefaultWebhookConfig
+import com.daohoangson.n8n.notificationlistener.config.WebhookConfigStore
 import com.daohoangson.n8n.notificationlistener.data.database.FailedNotification
 import com.daohoangson.n8n.notificationlistener.data.database.UndecidedNotification
 import com.daohoangson.n8n.notificationlistener.data.repository.NotificationRepository
@@ -49,20 +50,33 @@ class NotificationListActivity : ComponentActivity() {
     
     @Inject
     lateinit var repository: NotificationRepository
+
+    @Inject
+    lateinit var configStore: WebhookConfigStore
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         setContent {
             MyApplicationTheme {
-                NotificationListScreen(repository)
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    NotificationListScreen(
+                        repository = repository,
+                        configStore = configStore,
+                        modifier = Modifier.padding(innerPadding)
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun NotificationListScreen(repository: NotificationRepository) {
+fun NotificationListScreen(
+    repository: NotificationRepository,
+    configStore: WebhookConfigStore,
+    modifier: Modifier = Modifier
+) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val failedNotifications by repository.getAllFailedNotificationsFlow().collectAsState(initial = emptyList())
     val undecidedNotifications by repository.getAllUndecidedNotificationsFlow().collectAsState(initial = emptyList())
@@ -82,13 +96,14 @@ fun NotificationListScreen(repository: NotificationRepository) {
                     showUrlSelectionDialog = false
                     selectedUndecidedNotification = null
                 },
-                repository = repository
+                repository = repository,
+                configStore = configStore
             )
         }
     }
     
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
@@ -359,9 +374,10 @@ fun UrlSelectionDialog(
     notification: UndecidedNotification,
     onDismiss: () -> Unit,
     onUpload: (UndecidedNotification, String) -> Unit,
-    repository: NotificationRepository
+    repository: NotificationRepository,
+    configStore: WebhookConfigStore
 ) {
-    val availableUrls = DefaultWebhookConfig.config.urls
+    val config by configStore.config.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     
     AlertDialog(
@@ -369,9 +385,13 @@ fun UrlSelectionDialog(
         title = { Text("Select Webhook URL") },
         text = {
             Column {
-                Text("Choose a webhook URL to send this notification to:")
+                if (config.urls.isEmpty()) {
+                    Text("No webhooks configured. Add one from the main screen first.")
+                } else {
+                    Text("Choose a webhook URL to send this notification to:")
+                }
                 Spacer(modifier = Modifier.height(8.dp))
-                availableUrls.forEach { webhookUrl ->
+                config.urls.forEach { webhookUrl ->
                     TextButton(
                         onClick = {
                             coroutineScope.launch {
